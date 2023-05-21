@@ -1,0 +1,22 @@
+name: my-node-app
+replicaCount: 1
+image:
+  repository: my-registry/node-app
+  tag: v1.0.0
+  pullPolicy: IfNotPresent
+service:
+  name: app-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+ingress:
+  enabled: false
+  annotations: {}
+  paths:
+    - /
+  hosts:
+    - chart-example.local
+  tls: []
