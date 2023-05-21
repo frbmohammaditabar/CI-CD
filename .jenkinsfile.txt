@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_REGISTRY = 'registry.example.com'
+        DOCKER_REPO = 'my-wordpress-app'
+        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        # Replace with your WordPress settings
+        WORDPRESS_DB_HOST = 'db.example.com'
+        WORDPRESS_DB_NAME = 'wordpress'
+        WORDPRESS_DB_USER = 'wpuser'
+        WORDPRESS_DB_PASSWORD = 'wppassword'
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'docker build -t "${DOCKER_REGISTRY}/${DOCKER_REPO}:${DOCKER_TAG}" .'
+            }
+        }
+        stage('Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'docker login "${DOCKER_REGISTRY}" -u "${DOCKER_USER}" -p "${DOCKER_PASS}"'
+                    sh 'docker push "${DOCKER_REGISTRY}/${DOCKER_REPO}:${DOCKER_TAG}"'
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'docker run --name my-wordpress-db -e MYSQL_ROOT_PASSWORD=password -e MYSQL_DATABASE="${WORDPRESS_DB_NAME}" -e MYSQL_USER="${WORDPRESS_DB_USER}" -e MYSQL_PASSWORD="${WORDPRESS_DB_PASSWORD}" -d mysql:latest'
+                sh 'docker run --name my-wordpress-app --link my-wordpress-db:mysql -e WORDPRESS_DB_HOST=mysql -e WORDPRESS_DB_NAME="${WORDPRESS_DB_NAME}" -e WORDPRESS_DB_USER="${WORDPRESS_DB_USER}" -e WORDPRESS_DB_PASSWORD="${WORDPRESS_DB_PASSWORD}" -p 80:80 -d "${DOCKER_REGISTRY}/${DOCKER_REPO}:${DOCKER_TAG}"'
+            }
+        }
+        post {
+            always {
+                sh 'docker stop my-wordpress-app my-wordpress-db'
+                sh 'docker rm my-wordpress-app my-wordpress-db'
+            }
+        }
+    }
+}
