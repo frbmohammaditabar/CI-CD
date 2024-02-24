@@ -1,2 +1,1 @@
-# alopeyk
-alopeyk challenge
+# Docker Jenkins pipeline
